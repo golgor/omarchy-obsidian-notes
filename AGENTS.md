@@ -27,8 +27,10 @@ New behavior = a new or extended `bin/notes` verb that QML calls.
 ## Interface contract
 
 `notes list` emits tab-separated `path⇥title⇥body`, newest first. `Panel.qml`
-splits on tabs and expects three fields. Updating this format requires updating
-both sides and `bin/test.sh`.
+splits on tabs and expects three fields. Newlines inside `body` are encoded as
+literal `\n` in the TSV stream so single-line TSV parsing stays unbroken;
+`Panel.qml` decodes `\n` back to linebreaks for `Text.MarkdownText`. Updating
+this format requires updating both sides and `bin/test.sh`.
 
 ## Configuration
 
@@ -45,6 +47,10 @@ session at login. (`.bashrc` does not reach `omarchy-shell`).
 - **Shortcut IPC toggle:** Keybinding actions (`SUPER+N`, `SUPER+CTRL+N`) must
   toggle (`opened ? close() : open()`) rather than force-open, so pressing the
   shortcut again closes the UI.
+- **Markdown & Escaped Linebreaks:** `Panel.qml` renders previews with
+  `textFormat: Text.MarkdownText`. TSV body linebreaks are encoded as `\n` in
+  `bin/notes list` and decoded in QML (`replace(/\\n/g, "\n")`) so single-line
+  TSV parsing remains intact.
 
 ## Tests & self-documentation loop
 
