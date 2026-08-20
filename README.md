@@ -3,11 +3,12 @@
 A small Omarchy bar-widget for quick Obsidian note capture.
 
 - `SUPER + N` — pop a native QML text area, type a multi-line note, it is saved to the vault.
-- `SUPER + CTRL + N` — toggle a dropdown of recent notes; click one to copy it.
+- `SUPER + CTRL + N` — toggle a dropdown of recent notes (rendered with Markdown formatting); click or Enter to copy.
 
 Notes are one `.md` file each in the folder named by `$NOTES_DIR`
 (default `~/Documents/Notes` — see **Configure your vault** below). Filenames
-are timestamps; the dropdown shows a datetime heading plus a ~100-char preview.
+are timestamps. Notes starting with `# Heading` use `Heading` as the card title
+(falling back to timestamp if no heading exists). Previews render formatted Markdown.
 
 ## Configure your vault
 
