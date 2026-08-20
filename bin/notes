@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Obsidian quick-notes: capture, list, and copy notes.
 #
-#   notes capture        Prompt (zenity) and write a new timestamped note.
+#   notes capture        Prompt (zenity multi-line editor) and write a timestamped note.
 #   notes list           Print "path<TAB>title<TAB>body" per note, newest first.
 #   notes copy <path>     Copy a note's full text to the clipboard.
 #   notes delete <path>   Move a note to the system trash (gio trash).
@@ -15,7 +15,9 @@ BODY_LEN=100
 capture() {
   mkdir -p "$NOTES_DIR"
   local text
-  text="$(zenity --entry --title="New note" --text="Note:" 2>/dev/null)" || exit 0
+  # --text-info --editable opens a multi-line text area; the note can have a body.
+  # $(...) strips trailing newlines, so printf adds exactly one at the end.
+  text="$(zenity --text-info --editable --title="New note" --width=500 --height=320 2>/dev/null)" || exit 0
   [[ -z "${text//[[:space:]]/}" ]] && exit 0   # empty / whitespace-only: write nothing
   printf '%s\n' "$text" > "$NOTES_DIR/$(date +%Y-%m-%d-%H%M%S).md"
 }
