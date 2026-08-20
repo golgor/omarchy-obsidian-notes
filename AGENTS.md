@@ -1,68 +1,70 @@
 # AGENTS.md
 
-Guidance for working on this plugin. It is small — keep it that way.
+Guidance for working on this plugin. Keep it small, deep, and correct.
 
 ## Architecture: one seam
 
 `bin/notes` is the **deep module**. All note and vault logic lives there,
-behind a three-verb **interface**:
+behind a four-verb **interface**:
 
-- `notes capture` — prompt (zenity) and write a new note.
+- `notes capture [text]` — save a timestamped note (from argument or stdin).
 - `notes list` — print `path⇥title⇥body`, one line per note, newest first.
 - `notes copy <path>` — copy a note's text to the clipboard.
+- `notes delete <path>` — move a note to the system trash (`gio trash`).
 
-The QML (`BarWidget.qml`, `Panel.qml`) is a thin **adapter** over that seam:
-it renders the dropdown and calls `bin/notes`. It does not know how notes are
-stored.
+The QML (`BarWidget.qml`, `Panel.qml`, `CaptureOverlay.qml`) is a thin **adapter**
+over that seam: it renders the UI and calls `bin/notes`.
 
-**The rule:** note/vault behaviour goes in `bin/notes`; QML only presents.
+**The rule:** note/vault logic lives in `bin/notes`; QML only presents.
 
-So QML must NOT:
-- contain the vault path, a filesystem path, or a glob;
-- parse timestamps or filenames;
-- read or write note files directly.
+QML presents UI only:
+- Keep filesystem paths, globs, and vault logic out of QML.
+- Keep timestamp parsing out of QML.
+- Keep file read/write operations out of QML.
 
-New behaviour = a new or extended `bin/notes` verb that QML calls. This keeps
-the logic testable from a plain shell (no compositor needed) and keeps each
-change local to one file.
+New behavior = a new or extended `bin/notes` verb that QML calls.
 
-## Interface contract (do not break silently)
+## Interface contract
 
 `notes list` emits tab-separated `path⇥title⇥body`, newest first. `Panel.qml`
-splits on the tab and expects three fields. Change the format and you change
-both sides plus `bin/test.sh`.
+splits on tabs and expects three fields. Updating this format requires updating
+both sides and `bin/test.sh`.
 
 ## Configuration
 
-The vault path comes only from `$NOTES_DIR` (default `~/Documents/Notes`).
-Never hardcode a personal or company path — this repo is public. Per-user
-setup lives in `~/.config/hypr/hyprland.lua` (see README).
+The vault path comes from `$NOTES_DIR` (default `~/Documents/Notes`). Session
+environment variables must be set in `~/.config/hypr/hyprland.lua` via
+`hl.env("NOTES_DIR", "/path")` so Hyprland exports them to the systemd user
+session at login. (`.bashrc` does not reach `omarchy-shell`).
 
-## Tests
+## QML patterns & gotchas
 
-Non-trivial script logic keeps one check in `bin/test.sh` (plain asserts, no
-framework). Run `./bin/test.sh`. Add a case when you touch the list/preview
-logic.
+- **BorderSurface padding:** `BorderSurface` children that fill parent directly
+  bypass internal padding. Anchor inner containers to `card.contentTopInset`,
+  `card.contentLeftInset`, `card.contentRightInset`, and `card.contentBottomInset`.
+- **Shortcut IPC toggle:** Keybinding actions (`SUPER+N`, `SUPER+CTRL+N`) must
+  toggle (`opened ? close() : open()`) rather than force-open, so pressing the
+  shortcut again closes the UI.
 
-## Dev workflow
+## Tests & self-documentation loop
 
-- The plugin is symlinked into `~/.config/omarchy/plugins/`. QML edits do NOT
-  hot-reload — run `omarchy restart shell` to apply them. `bin/notes` changes
-  take effect on the next dropdown open.
-- No new dependencies. Coreutils + `zenity` + `wl-copy` only.
+- **Test check:** Non-trivial script logic keeps a check in `bin/test.sh`. Run
+  `./bin/test.sh` before PRs.
+- **Documentation loop:** After completing changes, review `AGENTS.md` and
+  `SPEC.md` to prune stale instructions and record new structural findings or
+  gotchas.
 
-## Branch & PR workflow
+## Dev workflow & PRs
 
-`main` is protected — no direct pushes. Work one PR per issue.
-
-- Branch from `main`: `git switch -c <issue-number>-short-desc` (e.g. `1-keyboard-nav`).
-- Keep the PR scoped to that one issue and reference it in the description: `Closes #<n>`.
-- Before opening the PR: `./bin/test.sh` passes and `omarchy restart shell`
-  loads the plugin without QML errors.
+- **Dev workflow:** The plugin is symlinked into `~/.config/omarchy/plugins/`.
+  QML edits do NOT hot-reload — run `omarchy restart shell` to apply them.
+  `bin/notes` changes take effect on the next dropdown open.
+- **Dependencies:** Coreutils + `wl-copy` + `gio` only.
+- **PR workflow:** `main` is protected. Work on feature branches (`<issue>-desc` or `docs/<desc>`),
+  reference `Closes #<n>` if applicable, and open one PR per issue.
 
 ## Ponytail
 
 Prefer the smallest change that works. No abstraction for a single caller, no
 config for a constant, no scaffolding "for later". Deletion beats addition.
-If a simplification cuts a real corner, mark it with a `ponytail:` comment
-naming the ceiling.
+If a simplification cuts a real corner, mark it with a `ponytail:` comment.
