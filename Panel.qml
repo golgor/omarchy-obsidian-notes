@@ -103,7 +103,10 @@ Panel {
           var lines = out.split("\n")
           for (var i = 0; i < lines.length; i++) {
             var parts = lines[i].split("\t")
-            if (parts.length >= 3) rows.push({ path: parts[0], title: parts[1], body: parts.slice(2).join("\t") })
+            if (parts.length >= 3) {
+              var rawBody = parts.slice(2).join("\t").replace(/\\n/g, "\n")
+              rows.push({ path: parts[0], title: parts[1], body: rawBody })
+            }
           }
         }
         root.notes = rows
@@ -232,6 +235,7 @@ Panel {
                   Text {
                     width: parent.width
                     text: item.modelData.body
+                    textFormat: Text.MarkdownText
                     color: root.dim
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.body

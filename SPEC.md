@@ -17,7 +17,7 @@ a dropdown and copy one back to the clipboard.
 | Filename | Timestamp: `YYYY-MM-DD-HHMMSS.md` (no collisions, no sanitizing) |
 | File content | Exactly the text you typed (supports multi-line notes) |
 | Capture UI | Quickshell QML capture overlay (`CaptureOverlay.qml`) |
-| Dropdown row | Bold datetime heading + up to 100-char body preview, divider between |
+| Dropdown row | Smart Title (`# Heading` if present, else timestamp) + formatted Markdown body preview (`Text.MarkdownText`), divider between |
 | Dropdown order | Newest first (by modification time) |
 | Click a note | Copy its full text to the clipboard (`wl-copy`) |
 | Code location | This repo in `~/Code/Personal/`, symlinked into the shell |
