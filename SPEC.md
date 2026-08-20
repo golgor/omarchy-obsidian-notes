@@ -15,8 +15,8 @@ a dropdown and copy one back to the clipboard.
 | Vault / destination | `$NOTES_DIR` env var (default `~/Documents/Notes`) |
 | Storage | One `.md` file per note |
 | Filename | Timestamp: `YYYY-MM-DD-HHMMSS.md` (no collisions, no sanitizing) |
-| File content | Exactly the text you typed |
-| Capture UI | `zenity --entry` popup (only prompt tool installed; no app switch) |
+| File content | Exactly the text you typed (supports multi-line notes) |
+| Capture UI | Quickshell QML capture overlay (`CaptureOverlay.qml`) |
 | Dropdown row | Bold datetime heading + up to 100-char body preview, divider between |
 | Dropdown order | Newest first (by modification time) |
 | Click a note | Copy its full text to the clipboard (`wl-copy`) |
@@ -27,7 +27,7 @@ a dropdown and copy one back to the clipboard.
 
 | Key | Action | Note |
 |-----|--------|------|
-| `SUPER + N` | New note (zenity capture) | new binding |
+| `SUPER + N` | New note (QML capture overlay) | new binding |
 | `SUPER + CTRL + N` | Toggle the notes dropdown | replaces default Toggle nightlight |
 | `SUPER + SHIFT + N` | (unchanged — still Editor) | left as-is |
 
@@ -39,7 +39,5 @@ a dropdown and copy one back to the clipboard.
 
 ## Deferred (later iterations)
 
-- `j`/`k` to move, `Enter` to copy (keyboard-driven dropdown).
 - Right-click or an icon to open the note in Obsidian.
 - Readable title-based filenames.
-- Multi-line capture.

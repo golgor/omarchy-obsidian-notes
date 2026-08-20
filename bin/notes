@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Obsidian quick-notes: capture, list, and copy notes.
 #
-#   notes capture        Prompt (zenity) and write a new timestamped note.
+#   notes capture [text] Prompt/save a timestamped note (text argument or stdin).
 #   notes list           Print "path<TAB>title<TAB>body" per note, newest first.
 #   notes copy <path>     Copy a note's full text to the clipboard.
 #   notes delete <path>   Move a note to the system trash (gio trash).
@@ -14,8 +14,10 @@ BODY_LEN=100
 
 capture() {
   mkdir -p "$NOTES_DIR"
-  local text
-  text="$(zenity --entry --title="New note" --text="Note:" 2>/dev/null)" || exit 0
+  local text="${1:-}"
+  if [[ -z "$text" && ! -t 0 ]]; then
+    text="$(cat -)"
+  fi
   [[ -z "${text//[[:space:]]/}" ]] && exit 0   # empty / whitespace-only: write nothing
   printf '%s\n' "$text" > "$NOTES_DIR/$(date +%Y-%m-%d-%H%M%S).md"
 }
@@ -58,9 +60,9 @@ trash_note() {
 }
 
 case "${1:-}" in
-  capture) capture ;;
+  capture) shift; capture "${1:-}" ;;
   list)    list ;;
   copy)    shift; copy "${1:-}" ;;
   delete)  shift; trash_note "${1:-}" ;;
-  *) echo "usage: notes {capture|list|copy <path>|delete <path>}" >&2; exit 2 ;;
+  *) echo "usage: notes {capture [text]|list|copy <path>|delete <path>}" >&2; exit 2 ;;
 esac

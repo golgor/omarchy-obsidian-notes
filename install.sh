@@ -41,7 +41,7 @@ else
 
 -- Obsidian quick-notes plugin ($PLUGIN_ID)
 hl.unbind("SUPER + CTRL + N")   -- was: Toggle nightlight
-o.bind("SUPER + N", "New note", "$REPO/bin/notes capture")
+o.bind("SUPER + N", "New note", "omarchy-shell $PLUGIN_ID capture")
 o.bind("SUPER + CTRL + N", "Toggle notes", "omarchy-shell shell toggle $PLUGIN_ID")
 LUA
   echo "added   keybinds (backup: $BINDINGS.bak.*)"
