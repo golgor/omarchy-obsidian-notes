@@ -5,6 +5,14 @@ A small Omarchy bar-widget for quick Obsidian note capture.
 - `SUPER + N` — pop a native QML text area, type a multi-line note, it is saved to the vault.
 - `SUPER + CTRL + N` — toggle a dropdown of recent notes (rendered with Markdown formatting); click or Enter to copy.
 
+SUPER + CTRL + N is originally set up to toggle "Night Light". I opted to unbind that and use it for these plugin:
+
+```lua
+hl.unbind("SUPER + CTRL + N")   -- was: Toggle nightlight
+o.bind("SUPER + N", "New note", "omarchy-shell golgor.notes capture")
+o.bind("SUPER + CTRL + N", "Toggle notes", "omarchy-shell shell toggle golgor.notes")
+```
+
 Notes are one `.md` file each in the folder named by `$NOTES_DIR`
 (default `~/Documents/Notes` — see **Configure your vault** below). Filenames
 are timestamps. Notes starting with `# Heading` use `Heading` as the card title
