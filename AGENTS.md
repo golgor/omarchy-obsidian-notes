@@ -51,6 +51,15 @@ logic.
   take effect on the next dropdown open.
 - No new dependencies. Coreutils + `zenity` + `wl-copy` only.
 
+## Branch & PR workflow
+
+`main` is protected — no direct pushes. Work one PR per issue.
+
+- Branch from `main`: `git switch -c <issue-number>-short-desc` (e.g. `1-keyboard-nav`).
+- Keep the PR scoped to that one issue and reference it in the description: `Closes #<n>`.
+- Before opening the PR: `./bin/test.sh` passes and `omarchy restart shell`
+  loads the plugin without QML errors.
+
 ## Ponytail
 
 Prefer the smallest change that works. No abstraction for a single caller, no
