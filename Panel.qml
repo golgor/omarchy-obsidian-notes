@@ -5,8 +5,9 @@ import qs.Ui
 
 // Recent-notes dropdown. Runs `bin/notes list` on open, showing one row per
 // note (datetime heading + ~100-char body, newest first). A row is selected
-// with the mouse (hover) or the keyboard (j/k, Up/Down); Enter/Space or a
-// click copies the selected note's text via `bin/notes copy` and closes.
+// with the mouse (hover) or the keyboard (j/k, Up/Down). Enter/Space or a
+// click copies the selected note; `x` moves it to the trash after a confirm
+// dialog. A footer lists the available keys.
 Panel {
   id: root
   moduleName: "golgor.notes"
@@ -24,8 +25,10 @@ Panel {
 
   property var notes: []   // [{ path, title, body }]
   property int selectedIndex: -1
+  property string pendingDeletePath: ""
+  property string pendingDeleteTitle: ""
 
-  function open() { refresh(); root.controller.show() }
+  function open() { root.selectedIndex = 0; refresh(); root.controller.show() }
   function close() { root.controller.hide() }
   function toggle() { root.opened ? root.close() : root.open() }
   function switchPanel(direction) {
@@ -63,6 +66,29 @@ Panel {
     else if (it.y + it.height > scroll.contentY + scroll.height) scroll.contentY = it.y + it.height - scroll.height
   }
 
+  function requestDelete() {
+    if (root.selectedIndex < 0 || root.selectedIndex >= root.notes.length) return
+    root.pendingDeletePath = root.notes[root.selectedIndex].path
+    root.pendingDeleteTitle = root.notes[root.selectedIndex].title
+    confirmDialog.selectedIndex = 1
+    confirmDialog.opened = true
+  }
+
+  function performDelete() {
+    confirmDialog.opened = false
+    if (root.pendingDeletePath === "") return
+    deleteProc.command = [root.scriptPath, "delete", root.pendingDeletePath]
+    deleteProc.running = true
+    root.pendingDeletePath = ""
+    root.pendingDeleteTitle = ""
+  }
+
+  function cancelDelete() {
+    confirmDialog.opened = false
+    root.pendingDeletePath = ""
+    root.pendingDeleteTitle = ""
+  }
+
   Process {
     id: listProc
     command: [root.scriptPath, "list"]
@@ -79,12 +105,19 @@ Panel {
           }
         }
         root.notes = rows
-        root.selectedIndex = rows.length > 0 ? 0 : -1
+        if (rows.length === 0) root.selectedIndex = -1
+        else if (root.selectedIndex < 0) root.selectedIndex = 0
+        else if (root.selectedIndex > rows.length - 1) root.selectedIndex = rows.length - 1
       }
     }
   }
 
   Process { id: copyProc }
+
+  Process {
+    id: deleteProc
+    onExited: function(code) { if (code === 0) root.refresh() }
+  }
 
   KeyboardPanel {
     id: panel
@@ -94,19 +127,34 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(420))
-    contentHeight: panel.fittedContentHeight(listColumn.implicitHeight)
+    contentHeight: panel.fittedContentHeight(listColumn.implicitHeight
+      + (root.notes.length > 0 ? footer.implicitHeight + Style.space(6) : 0))
 
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      onCloseRequested: root.close()
-      onTabRequested: function(direction) { root.switchPanel(direction) }
-      onMoveRequested: function(dx, dy) { root.moveSelection(dy) }
-      onActivateRequested: root.activateSelection()
+      onCloseRequested: { if (confirmDialog.opened) root.cancelDelete(); else root.close() }
+      onTabRequested: function(direction) {
+        if (confirmDialog.opened) confirmDialog.selectedIndex = confirmDialog.selectedIndex === 0 ? 1 : 0
+        else root.switchPanel(direction)
+      }
+      onMoveRequested: function(dx, dy) {
+        if (confirmDialog.opened) confirmDialog.selectedIndex = confirmDialog.selectedIndex === 0 ? 1 : 0
+        else root.moveSelection(dy)
+      }
+      onActivateRequested: {
+        if (confirmDialog.opened) { if (confirmDialog.selectedIndex === 0) root.cancelDelete(); else root.performDelete() }
+        else root.activateSelection()
+      }
+      onDeleteRequested: { if (!confirmDialog.opened) root.requestDelete() }
 
       Flickable {
         id: scroll
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: footer.top
+        anchors.bottomMargin: footer.visible ? Style.space(6) : 0
         contentWidth: width
         contentHeight: listColumn.implicitHeight
         clip: true
@@ -207,6 +255,38 @@ Panel {
             }
           }
         }
+      }
+
+      Column {
+        id: footer
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        spacing: Style.space(6)
+        visible: root.notes.length > 0
+        height: visible ? implicitHeight : 0
+
+        PanelSeparator { width: footer.width; foreground: root.fg }
+
+        Text {
+          width: footer.width
+          text: "Enter copy   ·   X delete   ·   j/k move"
+          horizontalAlignment: Text.AlignHCenter
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+        }
+      }
+
+      ConfirmDialog {
+        id: confirmDialog
+        anchors.fill: parent
+        fontFamily: root.fontFamily
+        confirmText: "Delete"
+        cancelText: "Cancel"
+        message: "Move this note to trash?\n\n" + root.pendingDeleteTitle
+        onConfirmed: root.performDelete()
+        onCanceled: root.cancelDelete()
       }
     }
   }

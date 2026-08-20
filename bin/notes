@@ -4,6 +4,7 @@
 #   notes capture        Prompt (zenity) and write a new timestamped note.
 #   notes list           Print "path<TAB>title<TAB>body" per note, newest first.
 #   notes copy <path>     Copy a note's full text to the clipboard.
+#   notes delete <path>   Move a note to the system trash (gio trash).
 set -euo pipefail
 
 # Vault location comes from the NOTES_DIR environment variable (set it in
@@ -49,9 +50,17 @@ copy() {
   wl-copy < "$path"
 }
 
+# ponytail: thin wrapper over gio trash (recoverable); no test needed.
+trash_note() {
+  local path="${1:?path required}"
+  [[ -f "$path" ]] || { echo "no such note: $path" >&2; exit 1; }
+  gio trash "$path"
+}
+
 case "${1:-}" in
   capture) capture ;;
   list)    list ;;
   copy)    shift; copy "${1:-}" ;;
-  *) echo "usage: notes {capture|list|copy <path>}" >&2; exit 2 ;;
+  delete)  shift; trash_note "${1:-}" ;;
+  *) echo "usage: notes {capture|list|copy <path>|delete <path>}" >&2; exit 2 ;;
 esac
