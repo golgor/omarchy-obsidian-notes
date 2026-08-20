@@ -22,6 +22,7 @@ BarWidget {
   function closeForPopoutSwitch() { if (panelLoader.item) panelLoader.item.closeForPopoutSwitch() }
 
   function openCapture() { if (captureLoader.item) captureLoader.item.open() }
+  function toggleCapture() { if (captureLoader.item) captureLoader.item.toggle() }
 
   function injectPanel() {
     var target = panelLoader.item
@@ -67,7 +68,7 @@ BarWidget {
     function show(): void { root.open() }
     function hide(): void { root.close() }
     function toggle(): void { root.togglePanel() }
-    function capture(): void { root.openCapture() }
+    function capture(): void { root.toggleCapture() }
   }
 
   WidgetButton {
