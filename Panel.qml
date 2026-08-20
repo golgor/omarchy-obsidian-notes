@@ -28,7 +28,9 @@ Panel {
   property string pendingDeletePath: ""
   property string pendingDeleteTitle: ""
 
-  function open() { root.selectedIndex = 0; refresh(); root.controller.show() }
+  // No forced selection reset here: the clamp in listProc preserves the last
+  // selection across reopens (and lands on 0 the first time).
+  function open() { refresh(); root.controller.show() }
   function close() { root.controller.hide() }
   function toggle() { root.opened ? root.close() : root.open() }
   function switchPanel(direction) {
@@ -139,7 +141,9 @@ Panel {
         else root.switchPanel(direction)
       }
       onMoveRequested: function(dx, dy) {
-        if (confirmDialog.opened) confirmDialog.selectedIndex = confirmDialog.selectedIndex === 0 ? 1 : 0
+        // Dialog buttons are horizontal, so only Left/Right (+ Tab) toggle them;
+        // j/k/Up/Down stay list-navigation keys and do nothing while it is open.
+        if (confirmDialog.opened) { if (dx !== 0) confirmDialog.selectedIndex = confirmDialog.selectedIndex === 0 ? 1 : 0 }
         else root.moveSelection(dy)
       }
       onActivateRequested: {
