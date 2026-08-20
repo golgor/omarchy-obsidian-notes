@@ -3,9 +3,10 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Recent-notes dropdown. Runs `bin/notes list` on open, shows one row per note
-// (first 40 chars, newest first). Clicking a row copies the note's full text
-// to the clipboard via `bin/notes copy` and closes the dropdown.
+// Recent-notes dropdown. Runs `bin/notes list` on open, showing one row per
+// note (datetime heading + ~100-char body, newest first). A row is selected
+// with the mouse (hover) or the keyboard (j/k, Up/Down); Enter/Space or a
+// click copies the selected note's text via `bin/notes copy` and closes.
 Panel {
   id: root
   moduleName: "golgor.notes"
@@ -22,6 +23,7 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
   property var notes: []   // [{ path, title, body }]
+  property int selectedIndex: -1
 
   function open() { refresh(); root.controller.show() }
   function close() { root.controller.hide() }
@@ -36,6 +38,29 @@ Panel {
   function copyNote(path) {
     copyProc.command = [root.scriptPath, "copy", path]
     copyProc.running = true
+  }
+
+  function moveSelection(delta) {
+    if (root.notes.length === 0) return
+    var i = root.selectedIndex + delta
+    if (i < 0) i = 0
+    if (i > root.notes.length - 1) i = root.notes.length - 1
+    root.selectedIndex = i
+    root.ensureVisible(i)
+  }
+
+  function activateSelection() {
+    if (root.selectedIndex < 0 || root.selectedIndex >= root.notes.length) return
+    root.copyNote(root.notes[root.selectedIndex].path)
+    root.close()
+  }
+
+  // Keep the selected row within the scroll viewport.
+  function ensureVisible(i) {
+    var it = notesRepeater.itemAt(i)
+    if (!it) return
+    if (it.y < scroll.contentY) scroll.contentY = it.y
+    else if (it.y + it.height > scroll.contentY + scroll.height) scroll.contentY = it.y + it.height - scroll.height
   }
 
   Process {
@@ -54,6 +79,7 @@ Panel {
           }
         }
         root.notes = rows
+        root.selectedIndex = rows.length > 0 ? 0 : -1
       }
     }
   }
@@ -75,6 +101,8 @@ Panel {
       anchors.fill: parent
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
+      onMoveRequested: function(dx, dy) { root.moveSelection(dy) }
+      onActivateRequested: root.activateSelection()
 
       Flickable {
         id: scroll
@@ -114,6 +142,7 @@ Panel {
           }
 
           Repeater {
+            id: notesRepeater
             model: root.notes
 
             delegate: Column {
@@ -127,7 +156,7 @@ Panel {
                 width: parent.width
                 height: cardCol.implicitHeight + Style.space(14)
                 radius: Style.cornerRadius
-                color: cardMouse.containsMouse ? Util.alpha(root.fg, 0.10) : "transparent"
+                color: item.index === root.selectedIndex ? Util.alpha(root.fg, 0.12) : "transparent"
 
                 Column {
                   id: cardCol
@@ -165,6 +194,7 @@ Panel {
                   anchors.fill: parent
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
+                  onEntered: root.selectedIndex = item.index
                   onClicked: { root.copyNote(item.modelData.path); root.close() }
                 }
               }
