@@ -2,7 +2,7 @@
 
 A small Omarchy bar-widget for quick Obsidian note capture.
 
-- `SUPER + N` — pop a text box, type a note, it is saved to the vault.
+- `SUPER + N` — pop a native QML text area, type a multi-line note, it is saved to the vault.
 - `SUPER + CTRL + N` — toggle a dropdown of recent notes; click one to copy it.
 
 Notes are one `.md` file each in the folder named by `$NOTES_DIR`

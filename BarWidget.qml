@@ -21,6 +21,8 @@ BarWidget {
   readonly property bool popoutSwitchClosing: panelLoader.item ? panelLoader.item.popoutSwitchClosing === true : false
   function closeForPopoutSwitch() { if (panelLoader.item) panelLoader.item.closeForPopoutSwitch() }
 
+  function openCapture() { if (captureLoader.item) captureLoader.item.open() }
+
   function injectPanel() {
     var target = panelLoader.item
     if (!target) return
@@ -30,9 +32,16 @@ BarWidget {
     if ("hostWidget" in target) target.hostWidget = root
   }
 
+  function injectCapture() {
+    var target = captureLoader.item
+    if (!target) return
+    if ("bar" in target) target.bar = root.bar
+    if ("hostWidget" in target) target.hostWidget = root
+  }
+
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
-  onBarChanged: injectPanel()
+  onBarChanged: { injectPanel(); injectCapture() }
   onSettingsChanged: injectPanel()
 
   Loader {
@@ -43,6 +52,14 @@ BarWidget {
     onLoaded: { root.injectPanel(); Qt.callLater(root.injectPanel) }
   }
 
+  Loader {
+    id: captureLoader
+    active: true
+    source: Qt.resolvedUrl("CaptureOverlay.qml")
+    visible: false
+    onLoaded: { root.injectCapture(); Qt.callLater(root.injectCapture) }
+  }
+
   IpcHandler {
     target: "golgor.notes"
     function open(): void { root.open() }
@@ -50,6 +67,7 @@ BarWidget {
     function show(): void { root.open() }
     function hide(): void { root.close() }
     function toggle(): void { root.togglePanel() }
+    function capture(): void { root.openCapture() }
   }
 
   WidgetButton {
