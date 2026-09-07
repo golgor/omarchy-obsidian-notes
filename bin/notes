@@ -3,6 +3,8 @@
 #
 #   notes capture [text] Prompt/save a timestamped note (text argument or stdin).
 #   notes list           Print "path<TAB>title<TAB>body" per note, newest first.
+#   notes read <path>    Print the full raw text of a note.
+#   notes write <path> [text] Overwrite a note with text (argument or stdin).
 #   notes copy <path>     Copy a note's full text to the clipboard.
 #   notes delete <path>   Move a note to the system trash (gio trash).
 set -euo pipefail
@@ -14,8 +16,10 @@ BODY_LEN=100
 
 capture() {
   mkdir -p "$NOTES_DIR"
-  local text="${1:-}"
-  if [[ -z "$text" && ! -t 0 ]]; then
+  local text=""
+  if [[ $# -ge 1 ]]; then
+    text="$1"
+  elif [[ ! -t 0 ]]; then
     text="$(cat -)"
   fi
   [[ -z "${text//[[:space:]]/}" ]] && exit 0   # empty / whitespace-only: write nothing
@@ -55,6 +59,23 @@ list() {
   done < <(ls -1t "$NOTES_DIR"/*.md 2>/dev/null)
 }
 
+read_note() {
+  local path="${1:?path required}"
+  [[ -f "$path" ]] || { echo "no such note: $path" >&2; exit 1; }
+  cat "$path"
+}
+
+write_note() {
+  local path="${1:?path required}"
+  local text=""
+  if [[ $# -ge 2 ]]; then
+    text="$2"
+  elif [[ ! -t 0 ]]; then
+    text="$(cat -)"
+  fi
+  printf '%s\n' "$text" > "$path"
+}
+
 copy() {
   local path="${1:?path required}"
   [[ -f "$path" ]] || { echo "no such note: $path" >&2; exit 1; }
@@ -69,9 +90,11 @@ trash_note() {
 }
 
 case "${1:-}" in
-  capture) shift; capture "${1:-}" ;;
+  capture) shift; capture "$@" ;;
   list)    list ;;
-  copy)    shift; copy "${1:-}" ;;
-  delete)  shift; trash_note "${1:-}" ;;
-  *) echo "usage: notes {capture [text]|list|copy <path>|delete <path>}" >&2; exit 2 ;;
+  read)    shift; read_note "$@" ;;
+  write)   shift; write_note "$@" ;;
+  copy)    shift; copy "$@" ;;
+  delete)  shift; trash_note "$@" ;;
+  *) echo "usage: notes {capture [text]|list|read <path>|write <path> [text]|copy <path>|delete <path>}" >&2; exit 2 ;;
 esac

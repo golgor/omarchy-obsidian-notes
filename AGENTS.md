@@ -5,10 +5,12 @@ Guidance for working on this plugin. Keep it small, deep, and correct.
 ## Architecture: one seam
 
 `bin/notes` is the **deep module**. All note and vault logic lives there,
-behind a four-verb **interface**:
+behind a six-verb **interface**:
 
 - `notes capture [text]` — save a timestamped note (from argument or stdin).
 - `notes list` — print `path⇥title⇥body`, one line per note, newest first.
+- `notes read <path>` — print the full raw text of a note.
+- `notes write <path> [text]` — overwrite a note with text (from argument or stdin).
 - `notes copy <path>` — copy a note's text to the clipboard.
 - `notes delete <path>` — move a note to the system trash (`gio trash`).
 

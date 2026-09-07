@@ -16,10 +16,11 @@ a dropdown and copy one back to the clipboard.
 | Storage | One `.md` file per note |
 | Filename | Timestamp: `YYYY-MM-DD-HHMMSS.md` (no collisions, no sanitizing) |
 | File content | Exactly the text you typed (supports multi-line notes) |
-| Capture UI | Quickshell QML capture overlay (`CaptureOverlay.qml`) |
+| Capture UI | Quickshell QML modal overlay (`CaptureOverlay.qml`) for capture & edit |
 | Dropdown row | Smart Title (`# Heading` if present, else timestamp) + formatted Markdown body preview (`Text.MarkdownText`), divider between |
 | Dropdown order | Newest first (by modification time) |
 | Click a note | Copy its full text to the clipboard (`wl-copy`) |
+| Edit a note | `e` or `r` key in dropdown (or click edit icon `󰏫`) opens note in the overlay |
 | Code location | This repo in `~/Code/Personal/`, symlinked into the shell |
 | Plugin id | `golgor.notes` (Omarchy bar-widget) |
 
@@ -33,7 +34,7 @@ a dropdown and copy one back to the clipboard.
 
 ## Parts
 
-- `bin/notes` — one script, three subcommands: `capture`, `list`, `copy`.
+- `bin/notes` — one script, six subcommands: `capture`, `list`, `read`, `write`, `copy`, `delete`.
 - `manifest.json`, `BarWidget.qml`, `Panel.qml` — the Omarchy bar-widget.
 - `install.sh` — symlink the plugin, register the bar widget, add the keybinds.
 

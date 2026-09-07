@@ -23,6 +23,7 @@ BarWidget {
 
   function openCapture() { if (captureLoader.item) captureLoader.item.open() }
   function toggleCapture() { if (captureLoader.item) captureLoader.item.toggle() }
+  function openEdit(path) { if (captureLoader.item) captureLoader.item.open(path) }
 
   function injectPanel() {
     var target = panelLoader.item
@@ -58,7 +59,15 @@ BarWidget {
     active: true
     source: Qt.resolvedUrl("CaptureOverlay.qml")
     visible: false
-    onLoaded: { root.injectCapture(); Qt.callLater(root.injectCapture) }
+    onLoaded: {
+      root.injectCapture()
+      Qt.callLater(root.injectCapture)
+      if (captureLoader.item && typeof captureLoader.item.saved !== "undefined") {
+        captureLoader.item.saved.connect(function() {
+          if (panelLoader.item) panelLoader.item.refresh()
+        })
+      }
+    }
   }
 
   IpcHandler {
@@ -69,6 +78,7 @@ BarWidget {
     function hide(): void { root.close() }
     function toggle(): void { root.togglePanel() }
     function capture(): void { root.toggleCapture() }
+    function edit(path: string): void { root.openEdit(path) }
   }
 
   WidgetButton {

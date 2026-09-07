@@ -6,14 +6,16 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Centered modal overlay for capturing a multi-line note.
-// Opened or toggled via IPC `omarchy-shell golgor.notes capture` or SUPER+N.
+// Centered modal overlay for capturing a new note or editing an existing note.
+// Opened or toggled via IPC `omarchy-shell golgor.notes capture` or from the dropdown.
 PanelWindow {
   id: root
 
   property QtObject bar: null
   property var hostWidget: null
   property bool opened: false
+  property string currentPath: ""
+  readonly property bool isEditing: currentPath !== ""
 
   readonly property color fg: bar ? bar.foreground : Color.foreground
   readonly property color bg: Color.popups.background
@@ -23,14 +25,26 @@ PanelWindow {
 
   signal saved()
 
-  function open() {
-    opened = true
-    inputArea.text = ""
-    Qt.callLater(function() { inputArea.forceActiveFocus() })
+  function open(path) {
+    confirmDialog.opened = false
+    if (path && String(path).trim().length > 0) {
+      currentPath = String(path)
+      opened = true
+      inputArea.text = ""
+      readProc.command = [root.scriptPath, "read", currentPath]
+      readProc.running = true
+    } else {
+      currentPath = ""
+      opened = true
+      inputArea.text = ""
+      Qt.callLater(function() { inputArea.forceActiveFocus() })
+    }
   }
 
   function close() {
+    confirmDialog.opened = false
     opened = false
+    currentPath = ""
   }
 
   function toggle() {
@@ -40,17 +54,78 @@ PanelWindow {
 
   function saveNote() {
     var content = inputArea.text.trim()
-    if (content.length > 0) {
-      saveProc.command = [root.scriptPath, "capture", content]
-      saveProc.running = true
+    if (root.isEditing) {
+      if (content.length === 0) {
+        confirmDialog.message = "Note is empty. Move to trash?"
+        confirmDialog.selectedIndex = 1
+        confirmDialog.opened = true
+        return
+      }
+      writeProc.command = [root.scriptPath, "write", root.currentPath, inputArea.text]
+      writeProc.running = true
+      root.close()
+    } else {
+      if (content.length > 0) {
+        saveProc.command = [root.scriptPath, "capture", content]
+        saveProc.running = true
+      }
+      root.close()
     }
-    close()
+  }
+
+  function requestDelete() {
+    if (!root.isEditing) return
+    confirmDialog.message = "Move this note to trash?"
+    confirmDialog.selectedIndex = 1
+    confirmDialog.opened = true
+  }
+
+  function performDelete() {
+    confirmDialog.opened = false
+    if (root.currentPath !== "") {
+      deleteProc.command = [root.scriptPath, "delete", root.currentPath]
+      deleteProc.running = true
+    }
+    root.close()
+  }
+
+  function cancelDelete() {
+    confirmDialog.opened = false
+    Qt.callLater(function() { inputArea.forceActiveFocus() })
   }
 
   Process {
     id: saveProc
     onExited: function(code) {
       if (code === 0) root.saved()
+    }
+  }
+
+  Process {
+    id: writeProc
+    onExited: function(code) {
+      if (code === 0) root.saved()
+    }
+  }
+
+  Process {
+    id: deleteProc
+    onExited: function(code) {
+      if (code === 0) root.saved()
+    }
+  }
+
+  Process {
+    id: readProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        inputArea.text = text || ""
+        Qt.callLater(function() {
+          inputArea.cursorPosition = inputArea.text.length
+          inputArea.forceActiveFocus()
+        })
+      }
     }
   }
 
@@ -70,15 +145,18 @@ PanelWindow {
 
     MouseArea {
       anchors.fill: parent
-      onClicked: root.close()
+      onClicked: {
+        if (confirmDialog.opened) root.cancelDelete()
+        else root.close()
+      }
     }
   }
 
   // Centered dialog card
   BorderSurface {
     id: card
-    width: Style.space(520)
-    height: Style.space(340)
+    width: Style.space(680)
+    height: Style.space(480)
     radius: Style.cornerRadius
     anchors.centerIn: parent
     color: root.bg
@@ -109,7 +187,7 @@ PanelWindow {
           spacing: Style.space(10)
 
           Text {
-            text: "󰅌"
+            text: root.isEditing ? "󰏫" : "󰅌"
             color: Color.accent
             font.family: root.fontFamily
             font.pixelSize: Style.font.title
@@ -117,7 +195,7 @@ PanelWindow {
           }
 
           Text {
-            text: "New Note"
+            text: root.isEditing ? "Edit Note" : "New Note"
             color: root.fg
             font.family: root.fontFamily
             font.pixelSize: Style.font.title
@@ -160,11 +238,25 @@ PanelWindow {
               background: null
 
               Keys.onPressed: function(event) {
+                if (confirmDialog.opened) {
+                  if (event.text === "x" || event.text === "X") {
+                    root.performDelete()
+                    event.accepted = true
+                    return
+                  }
+                  if (confirmDialog.handleKey(event)) {
+                    event.accepted = true
+                    return
+                  }
+                }
                 if (event.key === Qt.Key_Escape) {
                   root.close()
                   event.accepted = true
                 } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier)) {
                   root.saveNote()
+                  event.accepted = true
+                } else if (root.isEditing && (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) && (event.modifiers & Qt.ControlModifier)) {
+                  root.requestDelete()
                   event.accepted = true
                 }
               }
@@ -178,43 +270,92 @@ PanelWindow {
           width: parent.width
 
           Text {
-            text: "Ctrl+Enter save   ·   Esc cancel"
+            text: root.isEditing
+              ? "Ctrl+Enter save   ·   Ctrl+Delete delete   ·   Esc cancel"
+              : "Ctrl+Enter save   ·   Esc cancel"
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
             anchors.verticalCenter: parent.verticalCenter
           }
 
-          Item { width: parent.width - parent.children[0].width - saveBtn.width; height: 1 }
+          Item {
+            width: Math.max(0, parent.width - parent.children[0].width - buttonRow.width)
+            height: 1
+          }
 
-          Rectangle {
-            id: saveBtn
-            width: Style.space(80)
-            height: Style.space(30)
-            radius: Style.cornerRadius
-            color: saveMouse.containsMouse ? Util.alpha(Color.accent, 0.25) : Util.alpha(Color.accent, 0.15)
-            border.color: Color.accent
-            border.width: 1
+          Row {
+            id: buttonRow
+            spacing: Style.space(8)
 
-            Text {
-              anchors.centerIn: parent
-              text: "Save"
-              color: Color.accent
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.bodySmall
-              font.bold: true
+            Rectangle {
+              id: deleteBtn
+              visible: root.isEditing
+              width: Style.space(80)
+              height: Style.space(30)
+              radius: Style.cornerRadius
+              color: deleteMouse.containsMouse ? Util.alpha(Color.urgent, 0.25) : Util.alpha(Color.urgent, 0.15)
+              border.color: Color.urgent
+              border.width: 1
+
+              Text {
+                anchors.centerIn: parent
+                text: "Delete"
+                color: Color.urgent
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
+              }
+
+              MouseArea {
+                id: deleteMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.requestDelete()
+              }
             }
 
-            MouseArea {
-              id: saveMouse
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: root.saveNote()
+            Rectangle {
+              id: saveBtn
+              width: Style.space(80)
+              height: Style.space(30)
+              radius: Style.cornerRadius
+              color: saveMouse.containsMouse ? Util.alpha(Color.accent, 0.25) : Util.alpha(Color.accent, 0.15)
+              border.color: Color.accent
+              border.width: 1
+
+              Text {
+                anchors.centerIn: parent
+                text: "Save"
+                color: Color.accent
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
+              }
+
+              MouseArea {
+                id: saveMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.saveNote()
+              }
             }
           }
         }
       }
+    }
+
+    ConfirmDialog {
+      id: confirmDialog
+      anchors.fill: parent
+      fontFamily: root.fontFamily
+      confirmText: "Delete"
+      cancelText: "Cancel"
+      message: "Move this note to trash?"
+      onConfirmed: root.performDelete()
+      onCanceled: root.cancelDelete()
     }
   }
 }

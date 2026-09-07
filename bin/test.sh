@@ -24,6 +24,7 @@ first_body="$(cut -f3 <<<"$row1")"
 
 # Smart Title extracted from `# Smart Heading Title`.
 [[ "$first_title" == "Smart Heading Title" ]] || { echo "FAIL: expected Smart Heading Title, got '$first_title'"; exit 1; }
+[[ "$first_body" == *"a very long note body"* ]] || { echo "FAIL: expected body preview, got '$first_body'"; exit 1; }
 
 # Row 2 should fall back to timestamp heading.
 row2="$(sed -n '2p' <<<"$out")"
@@ -31,3 +32,19 @@ second_title="$(cut -f2 <<<"$row2")"
 [[ "$second_title" == "2026-01-01 00:00:00" ]] || { echo "FAIL: expected timestamp title, got '$second_title'"; exit 1; }
 
 echo "OK: 2 rows, smart title '$first_title', fallback title '$second_title'"
+
+# Test notes read
+read_content="$("$here/notes" read "$first_path")"
+[[ "$read_content" == *"a very long note body"* ]] || { echo "FAIL: notes read failed"; exit 1; }
+
+# Test notes write (argument)
+"$here/notes" write "$first_path" "Updated content line 1"
+updated_content="$("$here/notes" read "$first_path")"
+[[ "$updated_content" == "Updated content line 1" ]] || { echo "FAIL: notes write argument failed"; exit 1; }
+
+# Test notes write (stdin)
+printf "Stdin content\nline 2" | "$here/notes" write "$first_path"
+updated_stdin="$("$here/notes" read "$first_path")"
+[[ "$updated_stdin" == "Stdin content"$'\n'"line 2" ]] || { echo "FAIL: notes write stdin failed"; exit 1; }
+
+echo "OK: notes read and write verified"
