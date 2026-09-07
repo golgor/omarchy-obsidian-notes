@@ -45,6 +45,13 @@ Panel {
     copyProc.running = true
   }
 
+  function editNote(path) {
+    root.close()
+    if (root.hostWidget && typeof root.hostWidget.openEdit === "function") {
+      root.hostWidget.openEdit(path)
+    }
+  }
+
   function moveSelection(delta) {
     if (root.notes.length === 0) return
     var i = root.selectedIndex + delta
@@ -154,6 +161,14 @@ Panel {
         else root.activateSelection()
       }
       onDeleteRequested: { if (!confirmDialog.opened) root.requestDelete() }
+      onTextKey: function(t) {
+        if (confirmDialog.opened) return
+        if (t === "e" || t === "r" || t === "E" || t === "R") {
+          if (root.selectedIndex >= 0 && root.selectedIndex < root.notes.length) {
+            root.editNote(root.notes[root.selectedIndex].path)
+          }
+        }
+      }
 
       Flickable {
         id: scroll
@@ -219,7 +234,7 @@ Panel {
                   anchors.right: parent.right
                   anchors.verticalCenter: parent.verticalCenter
                   anchors.leftMargin: Style.space(10)
-                  anchors.rightMargin: Style.space(10)
+                  anchors.rightMargin: (item.index === root.selectedIndex || cardMouse.containsMouse) ? Style.space(38) : Style.space(10)
                   spacing: Style.space(3)
 
                   Text {
@@ -253,6 +268,34 @@ Panel {
                   onEntered: root.selectedIndex = item.index
                   onClicked: { root.copyNote(item.modelData.path); root.close() }
                 }
+
+                Rectangle {
+                  id: editBtn
+                  anchors.right: parent.right
+                  anchors.rightMargin: Style.space(8)
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(26)
+                  height: Style.space(26)
+                  radius: Style.cornerRadius
+                  color: editMouse.containsMouse ? Util.alpha(root.fg, 0.18) : "transparent"
+                  visible: item.index === root.selectedIndex || cardMouse.containsMouse
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: "󰏫"
+                    color: editMouse.containsMouse ? Color.accent : root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                  }
+
+                  MouseArea {
+                    id: editMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.editNote(item.modelData.path)
+                  }
+                }
               }
 
               PanelSeparator {
@@ -278,7 +321,7 @@ Panel {
 
         Text {
           width: footer.width
-          text: "Enter copy   ·   X delete   ·   j/k move"
+          text: "Enter copy   ·   e edit   ·   X delete   ·   j/k move"
           horizontalAlignment: Text.AlignHCenter
           color: root.dim
           font.family: root.fontFamily
