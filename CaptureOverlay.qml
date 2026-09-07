@@ -15,6 +15,7 @@ PanelWindow {
   property var hostWidget: null
   property bool opened: false
   property string currentPath: ""
+  property string readingPath: ""
   readonly property bool isEditing: currentPath !== ""
 
   readonly property color fg: bar ? bar.foreground : Color.foreground
@@ -29,12 +30,14 @@ PanelWindow {
     confirmDialog.opened = false
     if (path && String(path).trim().length > 0) {
       currentPath = String(path)
+      readingPath = currentPath
       opened = true
       inputArea.text = ""
       readProc.command = [root.scriptPath, "read", currentPath]
       readProc.running = true
     } else {
       currentPath = ""
+      readingPath = ""
       opened = true
       inputArea.text = ""
       Qt.callLater(function() { inputArea.forceActiveFocus() })
@@ -45,6 +48,7 @@ PanelWindow {
     confirmDialog.opened = false
     opened = false
     currentPath = ""
+    readingPath = ""
   }
 
   function toggle() {
@@ -120,6 +124,7 @@ PanelWindow {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        if (!root.opened || root.currentPath === "" || root.currentPath !== root.readingPath) return
         inputArea.text = text || ""
         Qt.callLater(function() {
           inputArea.cursorPosition = inputArea.text.length
@@ -239,15 +244,10 @@ PanelWindow {
 
               Keys.onPressed: function(event) {
                 if (confirmDialog.opened) {
-                  if (event.text === "x" || event.text === "X") {
-                    root.performDelete()
-                    event.accepted = true
-                    return
-                  }
                   if (confirmDialog.handleKey(event)) {
                     event.accepted = true
-                    return
                   }
+                  return
                 }
                 if (event.key === Qt.Key_Escape) {
                   root.close()
@@ -255,7 +255,7 @@ PanelWindow {
                 } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier)) {
                   root.saveNote()
                   event.accepted = true
-                } else if (root.isEditing && (event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) && (event.modifiers & Qt.ControlModifier)) {
+                } else if (root.isEditing && event.key === Qt.Key_Delete && (event.modifiers & Qt.ControlModifier)) {
                   root.requestDelete()
                   event.accepted = true
                 }
